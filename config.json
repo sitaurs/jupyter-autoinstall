@@ -1,0 +1,12 @@
+{
+  "python_version": "3.13.7",
+  "install_dir": "C:\\Python313",
+  "packages": [
+    "notebook",
+    "numpy",
+    "pandas",
+    "matplotlib"
+  ],
+  "create_shortcut": true,
+  "auto_launch": true
+}
