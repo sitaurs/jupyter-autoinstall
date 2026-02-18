@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Jupyter Auto-Installer — One-liner setup for Python + Jupyter Notebook
+    Jupyter Auto-Installer - One-liner setup for Python + Jupyter Notebook
 .DESCRIPTION
     Automatically installs Python, pip, and Jupyter Notebook with customizable packages.
     Can be run directly from GitHub:
@@ -15,40 +15,37 @@
 #  CONFIG
 # ============================================================
 
-$DEFAULT_PYTHON_VERSION = "3.13.7"
-$DEFAULT_INSTALL_DIR    = "C:\Python313"
-$DEFAULT_PACKAGES       = @("notebook")
-$REPO_RAW_URL           = "https://raw.githubusercontent.com/sitaurs/jupyter-autoinstall/main"
+$DEFAULT_PYTHON_VERSION = '3.13.7'
+$DEFAULT_INSTALL_DIR = 'C:\Python313'
+$DEFAULT_PACKAGES = @('notebook')
+$REPO_RAW_URL = 'https://raw.githubusercontent.com/sitaurs/jupyter-autoinstall/main'
 
 # ============================================================
 #  HELPERS
 # ============================================================
 
 function Write-Step {
-    param([string]$Icon, [string]$Message, [string]$Color = "Cyan")
-    Write-Host ""
-    Write-Host "  $Icon " -NoNewline -ForegroundColor $Color
+    param([string]$Icon, [string]$Message, [string]$Color = 'Cyan')
+    Write-Host ''
+    Write-Host ('  ' + $Icon + ' ') -NoNewline -ForegroundColor $Color
     Write-Host $Message
 }
 
 function Write-SubStep {
-    param([string]$Message, [string]$Color = "DarkGray")
-    Write-Host "     $Message" -ForegroundColor $Color
+    param([string]$Message, [string]$Color = 'DarkGray')
+    Write-Host ('     ' + $Message) -ForegroundColor $Color
 }
 
 function Write-Banner {
-    $banner = @"
-
-    ╔══════════════════════════════════════════════════╗
-    ║                                                  ║
-    ║   🐍  Jupyter Auto-Installer                     ║
-    ║   ──────────────────────────                     ║
-    ║   Python + Jupyter Notebook in one command       ║
-    ║                                                  ║
-    ╚══════════════════════════════════════════════════╝
-
-"@
-    Write-Host $banner -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host '    ======================================================' -ForegroundColor Yellow
+    Write-Host '    ||                                                  ||' -ForegroundColor Yellow
+    Write-Host '    ||   Jupyter Auto-Installer                         ||' -ForegroundColor Yellow
+    Write-Host '    ||   ----------------------------------             ||' -ForegroundColor Yellow
+    Write-Host '    ||   Python + Jupyter Notebook in one command       ||' -ForegroundColor Yellow
+    Write-Host '    ||                                                  ||' -ForegroundColor Yellow
+    Write-Host '    ======================================================' -ForegroundColor Yellow
+    Write-Host ''
 }
 
 function Test-AdminRights {
@@ -62,35 +59,46 @@ function Test-AdminRights {
 # ============================================================
 
 function Get-InstallConfig {
-    $configPath = Join-Path $PSScriptRoot "config.json"
+    $configPath = Join-Path $PSScriptRoot 'config.json'
     $config = $null
 
     # Try local config first
     if (Test-Path $configPath) {
-        Write-SubStep "Loading config from local config.json"
+        Write-SubStep 'Loading config from local config.json'
         try {
             $config = Get-Content $configPath -Raw | ConvertFrom-Json
-        } catch {
-            Write-SubStep "Warning: Could not parse config.json, using defaults" "Yellow"
         }
-    } else {
+        catch {
+            Write-SubStep 'Warning: Could not parse config.json, using defaults' 'Yellow'
+        }
+    }
+    else {
         # Try remote config
-        Write-SubStep "Loading config from GitHub..."
+        Write-SubStep 'Loading config from GitHub...'
         try {
-            $remoteConfig = Invoke-RestMethod -Uri "$REPO_RAW_URL/config.json" -ErrorAction Stop
+            $remoteConfig = Invoke-RestMethod -Uri ($REPO_RAW_URL + '/config.json') -ErrorAction Stop
             $config = $remoteConfig
-        } catch {
-            Write-SubStep "Using default configuration" "Yellow"
+        }
+        catch {
+            Write-SubStep 'Using default configuration' 'Yellow'
         }
     }
 
     # Build final config with defaults
     $result = @{
-        PythonVersion  = if ($config -and $config.python_version)  { $config.python_version }  else { $DEFAULT_PYTHON_VERSION }
-        InstallDir     = if ($config -and $config.install_dir)     { $config.install_dir }     else { $DEFAULT_INSTALL_DIR }
-        Packages       = if ($config -and $config.packages)        { $config.packages }        else { $DEFAULT_PACKAGES }
-        CreateShortcut = if ($config -and $null -ne $config.create_shortcut) { $config.create_shortcut } else { $true }
-        AutoLaunch     = if ($config -and $null -ne $config.auto_launch)     { $config.auto_launch }     else { $true }
+        PythonVersion  = $DEFAULT_PYTHON_VERSION
+        InstallDir     = $DEFAULT_INSTALL_DIR
+        Packages       = $DEFAULT_PACKAGES
+        CreateShortcut = $true
+        AutoLaunch     = $true
+    }
+
+    if ($config) {
+        if ($config.python_version) { $result.PythonVersion = $config.python_version }
+        if ($config.install_dir) { $result.InstallDir = $config.install_dir }
+        if ($config.packages) { $result.Packages = $config.packages }
+        if ($null -ne $config.create_shortcut) { $result.CreateShortcut = $config.create_shortcut }
+        if ($null -ne $config.auto_launch) { $result.AutoLaunch = $config.auto_launch }
     }
 
     return $result
@@ -103,67 +111,72 @@ function Get-InstallConfig {
 function Install-Python {
     param($Config)
 
-    $pythonExe = Join-Path $Config.InstallDir "python.exe"
-    $version   = $Config.PythonVersion
+    $pythonExe = Join-Path $Config.InstallDir 'python.exe'
+    $version = $Config.PythonVersion
 
     # Check if Python already exists and works
     if (Test-Path $pythonExe) {
         try {
             $currentVersion = & $pythonExe --version 2>&1
             # Test if standard library works
-            $libTest = & $pythonExe -c "import os, sys; print('OK')" 2>&1
-            if ($libTest -eq "OK") {
-                Write-Step "✅" "Python already installed: $currentVersion" "Green"
+            $libTest = & $pythonExe -c 'import os, sys; print(chr(79)+chr(75))' 2>&1
+            if ($libTest -eq 'OK') {
+                Write-Step '[OK]' ('Python already installed: ' + $currentVersion) 'Green'
                 return $pythonExe
             }
-        } catch {}
-        Write-Step "⚠️" "Python found but broken, reinstalling..." "Yellow"
+        }
+        catch { }
+        Write-Step '[!!]' 'Python found but broken, reinstalling...' 'Yellow'
     }
 
-    Write-Step "📥" "Installing Python $version..."
+    Write-Step '[>>]' ('Installing Python ' + $version + '...')
 
     # Download installer
-    $installerUrl  = "https://www.python.org/ftp/python/$version/python-$version-amd64.exe"
-    $installerPath = Join-Path $env:TEMP "python-$version-amd64.exe"
+    $installerUrl = 'https://www.python.org/ftp/python/' + $version + '/python-' + $version + '-amd64.exe'
+    $installerPath = Join-Path $env:TEMP ('python-' + $version + '-amd64.exe')
 
-    Write-SubStep "Downloading from python.org..."
+    Write-SubStep 'Downloading from python.org...'
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $installerUrl -OutFile $installerPath -UseBasicParsing
-    } catch {
-        Write-Step "❌" "Download failed: $_" "Red"
+    }
+    catch {
+        Write-Step '[FAIL]' ('Download failed: ' + $_) 'Red'
         exit 1
     }
 
-    Write-SubStep "Running installer (this may take a minute)..."
+    Write-SubStep 'Running installer (this may take a minute)...'
 
     # Install with all components
     $installArgs = @(
-        "InstallAllUsers=1"
-        "PrependPath=1"
-        "Include_pip=1"
-        "Include_test=0"
-        "TargetDir=$($Config.InstallDir)"
-        "/passive"
+        'InstallAllUsers=1',
+        'PrependPath=1',
+        'Include_pip=1',
+        'Include_test=0',
+        ('TargetDir=' + $Config.InstallDir),
+        '/passive'
     )
 
     $process = Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait -PassThru
 
     if ($process.ExitCode -ne 0) {
-        Write-Step "❌" "Python installation failed (exit code: $($process.ExitCode))" "Red"
+        Write-Step '[FAIL]' ('Python installation failed (exit code: ' + $process.ExitCode + ')') 'Red'
         exit 1
     }
 
     # Refresh PATH
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    $machinePath = [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+    $userPath = [System.Environment]::GetEnvironmentVariable('Path', 'User')
+    $env:Path = $machinePath + ';' + $userPath
 
     # Verify
     if (Test-Path $pythonExe) {
         $ver = & $pythonExe --version 2>&1
-        Write-Step "✅" "Python installed: $ver" "Green"
-    } else {
-        Write-Step "❌" "Python installation verification failed" "Red"
+        Write-Step '[OK]' ('Python installed: ' + $ver) 'Green'
+    }
+    else {
+        Write-Step '[FAIL]' 'Python installation verification failed' 'Red'
         exit 1
     }
 
@@ -180,22 +193,22 @@ function Install-Python {
 function Install-Pip {
     param([string]$PythonExe)
 
-    Write-Step "📦" "Checking pip..."
+    Write-Step '[..]' 'Checking pip...'
 
     $pipCheck = & $PythonExe -m pip --version 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Write-SubStep "pip already installed: $pipCheck"
+        Write-SubStep ('pip already installed: ' + $pipCheck)
         return
     }
 
-    Write-SubStep "Installing pip..."
+    Write-SubStep 'Installing pip...'
     & $PythonExe -m ensurepip --upgrade 2>&1 | Out-Null
 
     if ($LASTEXITCODE -ne 0) {
         # Fallback: get-pip.py
-        Write-SubStep "Trying get-pip.py fallback..."
-        $getPipPath = Join-Path $env:TEMP "get-pip.py"
-        Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile $getPipPath -UseBasicParsing
+        Write-SubStep 'Trying get-pip.py fallback...'
+        $getPipPath = Join-Path $env:TEMP 'get-pip.py'
+        Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile $getPipPath -UseBasicParsing
         & $PythonExe $getPipPath 2>&1 | Out-Null
         Remove-Item $getPipPath -Force -ErrorAction SilentlyContinue
     }
@@ -204,7 +217,7 @@ function Install-Pip {
     & $PythonExe -m pip install --upgrade pip 2>&1 | Out-Null
 
     $pipVer = & $PythonExe -m pip --version 2>&1
-    Write-Step "✅" "pip ready: $pipVer" "Green"
+    Write-Step '[OK]' ('pip ready: ' + $pipVer) 'Green'
 }
 
 # ============================================================
@@ -215,11 +228,11 @@ function Install-Packages {
     param([string]$PythonExe, [array]$Packages)
 
     if (-not $Packages -or $Packages.Count -eq 0) {
-        Write-Step "⏭️" "No packages to install" "Yellow"
+        Write-Step '[--]' 'No packages to install' 'Yellow'
         return
     }
 
-    Write-Step "📚" "Installing packages..."
+    Write-Step '[..]' 'Installing packages...'
 
     $total = $Packages.Count
     $current = 0
@@ -231,19 +244,19 @@ function Install-Packages {
         # Check if already installed
         $check = & $PythonExe -m pip show $pkg 2>&1
         if ($LASTEXITCODE -eq 0) {
-            Write-SubStep "[$current/$total] $pkg — already installed ✓"
+            Write-SubStep ('[' + $current + '/' + $total + '] ' + $pkg + ' -- already installed')
             continue
         }
 
-        Write-SubStep "[$current/$total] Installing $pkg... ($pct%)"
+        Write-SubStep ('[' + $current + '/' + $total + '] Installing ' + $pkg + '... (' + $pct + ' percent)')
         & $PythonExe -m pip install $pkg --quiet 2>&1 | Out-Null
 
         if ($LASTEXITCODE -ne 0) {
-            Write-SubStep "Warning: Failed to install $pkg" "Yellow"
+            Write-SubStep ('Warning: Failed to install ' + $pkg) 'Yellow'
         }
     }
 
-    Write-Step "✅" "All packages installed!" "Green"
+    Write-Step '[OK]' 'All packages installed!' 'Green'
 }
 
 # ============================================================
@@ -253,11 +266,11 @@ function Install-Packages {
 function New-JupyterShortcut {
     param([string]$PythonExe)
 
-    $desktopPath = [System.Environment]::GetFolderPath("Desktop")
-    $shortcutPath = Join-Path $desktopPath "Jupyter Notebook.lnk"
+    $desktopPath = [System.Environment]::GetFolderPath('Desktop')
+    $shortcutPath = Join-Path $desktopPath 'Jupyter Notebook.lnk'
 
     if (Test-Path $shortcutPath) {
-        Write-SubStep "Desktop shortcut already exists"
+        Write-SubStep 'Desktop shortcut already exists'
         return
     }
 
@@ -265,15 +278,16 @@ function New-JupyterShortcut {
         $shell = New-Object -ComObject WScript.Shell
         $shortcut = $shell.CreateShortcut($shortcutPath)
         $shortcut.TargetPath = $PythonExe
-        $shortcut.Arguments = "-m notebook"
-        $shortcut.WorkingDirectory = [System.Environment]::GetFolderPath("UserProfile")
-        $shortcut.Description = "Launch Jupyter Notebook"
-        $shortcut.IconLocation = "$PythonExe,0"
+        $shortcut.Arguments = '-m notebook'
+        $shortcut.WorkingDirectory = [System.Environment]::GetFolderPath('UserProfile')
+        $shortcut.Description = 'Launch Jupyter Notebook'
+        $shortcut.IconLocation = $PythonExe + ',0'
         $shortcut.Save()
 
-        Write-Step "🖥️" "Desktop shortcut created: Jupyter Notebook" "Green"
-    } catch {
-        Write-SubStep "Could not create shortcut: $_" "Yellow"
+        Write-Step '[OK]' 'Desktop shortcut created: Jupyter Notebook' 'Green'
+    }
+    catch {
+        Write-SubStep ('Could not create shortcut: ' + $_) 'Yellow'
     }
 }
 
@@ -284,13 +298,13 @@ function New-JupyterShortcut {
 function Start-Jupyter {
     param([string]$PythonExe)
 
-    Write-Step "🚀" "Launching Jupyter Notebook..." "Magenta"
-    Write-Host ""
-    Write-Host "  ────────────────────────────────────────────" -ForegroundColor DarkGray
-    Write-Host "  Jupyter will open in your default browser." -ForegroundColor White
-    Write-Host "  Press Ctrl+C in this terminal to stop it." -ForegroundColor DarkGray
-    Write-Host "  ────────────────────────────────────────────" -ForegroundColor DarkGray
-    Write-Host ""
+    Write-Step '[>>]' 'Launching Jupyter Notebook...' 'Magenta'
+    Write-Host ''
+    Write-Host '  ----------------------------------------' -ForegroundColor DarkGray
+    Write-Host '  Jupyter will open in your default browser.' -ForegroundColor White
+    Write-Host '  Press Ctrl+C in this terminal to stop it.' -ForegroundColor DarkGray
+    Write-Host '  ----------------------------------------' -ForegroundColor DarkGray
+    Write-Host ''
 
     & $PythonExe -m notebook
 }
@@ -305,16 +319,16 @@ function Main {
 
     # Check admin
     if (-not (Test-AdminRights)) {
-        Write-Step "⚠️" "Running without admin. Install may require elevated privileges." "Yellow"
-        Write-SubStep "Right-click PowerShell → Run as Administrator if install fails."
+        Write-Step '[!!]' 'Running without admin. Install may require elevated privileges.' 'Yellow'
+        Write-SubStep 'Right-click PowerShell > Run as Administrator if install fails.'
     }
 
     # Load config
-    Write-Step "⚙️" "Loading configuration..."
+    Write-Step '[..]' 'Loading configuration...'
     $config = Get-InstallConfig
-    Write-SubStep "Python version : $($config.PythonVersion)"
-    Write-SubStep "Install dir    : $($config.InstallDir)"
-    Write-SubStep "Packages       : $($config.Packages -join ', ')"
+    Write-SubStep ('Python version : ' + $config.PythonVersion)
+    Write-SubStep ('Install dir    : ' + $config.InstallDir)
+    Write-SubStep ('Packages       : ' + ($config.Packages -join ', '))
 
     # Step 1: Python
     $pythonExe = Install-Python -Config $config
@@ -331,19 +345,20 @@ function Main {
     }
 
     # Summary
-    Write-Host ""
-    Write-Host "  ╔══════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "  ║  ✅  Installation Complete!               ║" -ForegroundColor Green
-    Write-Host "  ╚══════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
+    Write-Host ''
+    Write-Host '  ==========================================' -ForegroundColor Green
+    Write-Host '  ||  Installation Complete!               ||' -ForegroundColor Green
+    Write-Host '  ==========================================' -ForegroundColor Green
+    Write-Host ''
 
     # Step 5: Auto-launch
     if ($config.AutoLaunch) {
         Start-Jupyter -PythonExe $pythonExe
-    } else {
-        Write-Step "💡" "To start Jupyter Notebook, run:" "Cyan"
-        Write-Host "     python -m notebook" -ForegroundColor White
-        Write-Host ""
+    }
+    else {
+        Write-Step '[i]' 'To start Jupyter Notebook, run:' 'Cyan'
+        Write-Host '     python -m notebook' -ForegroundColor White
+        Write-Host ''
     }
 }
 
